@@ -35,6 +35,8 @@ pub const LevelObject = struct {
 
     player_goal: bool = false, // makes floor objects PlayerButton instead of Button
 
+    // for refs
+    flip: bool = false,
     special_effect: i32 = 0,
 };
 

@@ -317,7 +317,7 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
                     try writer.print("\tBlock {d} {d} {d} 1 1 {d} {d} {d} 1 1 {d} {d} {d} 0 0 0\n", .{ obj.x, obj.y, box_id, obj.hue, obj.sat, obj.val, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order });
                 },
                 .ref => {
-                    try writer.print("\tRef {d} {d} {d} {d} 0 0 0 0 0 {d} {d} {d} 0 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, obj.special_effect });
+                    try writer.print("\tRef {d} {d} {d} {d} 0 0 0 0 0 {d} {d} {d} {d} 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), obj.special_effect });
                 },
                 .floor => {
                     const type_text = if (obj.player_goal) "PlayerButton" else "Button";
@@ -444,6 +444,7 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                             .is_player = prop.player,
                             .player_order = prop.playerorder,
                             .possessable = prop.possessable,
+                            .flip = prop.fliph,
                             .special_effect = prop.specialeffect,
                         });
                         // we don't know if this is an exitblock until we reach the end of the file
@@ -478,7 +479,6 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
             .ref => |prop| {
                 if (prop.infexit) return error.InfinityNotImplemented;
                 if (prop.infenter) return error.EpsilonNotImplemented;
-                if (prop.fliph) return error.FlipNotImplemented;
                 if (prop.floatinspace) return error.FloatInSpaceNotImplemented;
 
                 const parent_id = parent_stack.getLastOrNull() orelse return error.NoParentBlock;
@@ -492,6 +492,7 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                     .is_player = prop.player,
                     .player_order = prop.playerorder,
                     .possessable = prop.possessable,
+                    .flip = prop.fliph,
                     .special_effect = prop.specialeffect,
                 });
 

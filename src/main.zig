@@ -341,6 +341,11 @@ fn objectPropertiesPanel(obj: *lv.LevelObject, palette_idx: i32) void {
     }
 
     if (obj.type == .ref) {
+        // flip
+        rect.y += 40;
+        rect.width = 30;
+        _ = gui.checkBox(rect, "flip", &obj.flip);
+
         // special effect
         rect.x += 75;
         rect.y += 40;

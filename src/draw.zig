@@ -50,7 +50,36 @@ fn getGoalRect(rect: rl.Rectangle) rl.Rectangle {
     };
 }
 
-fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level: u8, selection_effect: bool, clone: bool) void {
+fn drawFlipEffect(obj_rect: rl.Rectangle, right_to_left: bool) void {
+    const SPEED = 0.75;
+
+    const time: f32 = @floatCast(rl.getTime());
+
+    var progress_front = rl.math.wrap(time * SPEED, -0.5, 1.5);
+    var progress_back = progress_front - 0.2;
+
+    progress_front = utils.cubicEasing(progress_front);
+    progress_back = utils.cubicEasing(progress_back);
+
+    if (right_to_left) {
+        progress_front = 1 - progress_front;
+        progress_back = 1 - progress_back;
+    }
+
+    const front_x = obj_rect.x + progress_front * obj_rect.width;
+    const back_x = obj_rect.x + progress_back * obj_rect.width;
+
+    const rect: rl.Rectangle = .{
+        .x = @min(front_x, back_x),
+        .y = obj_rect.y,
+        .width = @abs(front_x - back_x),
+        .height = obj_rect.height,
+    };
+
+    rl.drawRectangleRec(rect, rl.colorAlpha(.white, 0.5));
+}
+
+fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level: u8, selection_effect: bool, clone: bool, flip: bool) void {
     if (recursion_level == 0) return;
 
     const maybe_room = level.rooms.getPtr(id);
@@ -76,7 +105,9 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                 continue;
             }
 
-            const objx: f32 = @floatFromInt(obj.x);
+            const draw_obj_x = if (flip) room.width - 1 - obj.x else obj.x;
+
+            const objx: f32 = @floatFromInt(draw_obj_x);
             const objy: f32 = @floatFromInt(obj.y);
             const obj_rect: rl.Rectangle = .{
                 .x = rect.x + objx * tw,
@@ -97,10 +128,15 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                     rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(.black, 0.8));
                 },
                 .ref => {
+                    const flip_inside = flip != obj.flip; // effectively a XOR, two flips cancel out
                     // recursion!
-                    drawRoom(level, obj.room_id, obj_rect, recursion_level - 1, false, !obj.exitblock);
+                    drawRoom(level, obj.room_id, obj_rect, recursion_level - 1, false, !obj.exitblock, flip_inside);
                     // black border
                     rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(.black, 0.8));
+                    // flip effect
+                    if (obj.flip) {
+                        drawFlipEffect(obj_rect, flip_inside);
+                    }
                 },
                 .floor => {
                     continue; // skip eyes and selection effect
@@ -127,7 +163,9 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                 continue;
             }
 
-            const objx: f32 = @floatFromInt(obj.x);
+            const draw_obj_x = if (flip) room.width - 1 - obj.x else obj.x;
+
+            const objx: f32 = @floatFromInt(draw_obj_x);
             const objy: f32 = @floatFromInt(obj.y);
             const obj_rect: rl.Rectangle = .{
                 .x = rect.x + objx * tw,
@@ -156,7 +194,7 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
 }
 
 pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel_rect: rl.Rectangle) void {
-    drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, false);
+    drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, false, false);
 
     // selection box
     if (draw_sel_box) {

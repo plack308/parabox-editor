@@ -91,3 +91,8 @@ pub fn colorButton(rect: rl.Rectangle, color: rl.Color) bool {
     const mouse_in_button = rl.checkCollisionPointRec(rl.getMousePosition(), rect);
     return rl.isMouseButtonPressed(.left) and mouse_in_button;
 }
+
+pub fn cubicEasing(x: f32) f32 {
+    const c = rl.math.clamp(x, 0, 1);
+    return c * c * (3 - 2 * c);
+}
