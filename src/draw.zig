@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const lv = @import("level.zig");
 const utils = @import("utils.zig");
 
-const RECURSION_DEPTH = 4;
+const RECURSION_DEPTH = 10;
 
 const Textures = struct {
     eyes: rl.Texture2D,
@@ -81,6 +81,8 @@ fn drawFlipEffect(obj_rect: rl.Rectangle, right_to_left: bool) void {
 
 fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level: u8, selection_effect: bool, clone: bool, flip: bool) void {
     if (recursion_level == 0) return;
+
+    if (rect.width < 7 or rect.height < 7) return;
 
     const maybe_room = level.rooms.getPtr(id);
     if (maybe_room) |room| {
