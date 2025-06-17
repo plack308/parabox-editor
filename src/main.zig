@@ -576,6 +576,40 @@ fn guiLevelOptions(level: *lv.Level, alloc: Allocator) void {
     rect.x += 110;
     rect.width = 300;
     _ = gui.label(rect, utils.getMusicText(level.music));
+
+    // draw style
+    rect.x = 10;
+    rect.y += 40;
+    rect.width = 100;
+    _ = gui.label(rect, "draw style");
+
+    rect.x += 100;
+    var normal_active: bool = level.draw_style == .normal;
+    _ = gui.toggle(rect, "normal", &normal_active);
+    if (normal_active) {
+        level.draw_style = .normal;
+    }
+
+    rect.x += 100;
+    var grid_active: bool = level.draw_style == .grid;
+    _ = gui.toggle(rect, "grid", &grid_active);
+    if (grid_active) {
+        level.draw_style = .grid;
+    }
+
+    rect.x += 100;
+    var text_active: bool = level.draw_style == .text;
+    _ = gui.toggle(rect, "text", &text_active);
+    if (text_active) {
+        level.draw_style = .text;
+    }
+
+    rect.x += 100;
+    var gallery_active: bool = level.draw_style == .gallery;
+    _ = gui.toggle(rect, "gallery", &gallery_active);
+    if (gallery_active) {
+        level.draw_style = .gallery;
+    }
 }
 
 fn guiControls() void {

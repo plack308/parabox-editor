@@ -116,10 +116,18 @@ pub const Room = struct {
 };
 
 pub const Level = struct {
+    const DrawStyle = enum {
+        normal,
+        grid,
+        text,
+        gallery,
+    };
+
     extrude: bool = false,
     inner_push: bool = false,
     palette: i32 = -1,
     music: i32 = -1,
+    draw_style: DrawStyle = .normal,
 
     rooms: AutoHashMap(i32, Room),
 

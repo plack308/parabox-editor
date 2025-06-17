@@ -63,6 +63,12 @@ const FloorProperties = struct {
     ftype: FloorType,
 };
 
+const DrawStyle = enum {
+    grid,
+    tui,
+    oldstyle,
+};
+
 fn nextInt(words: *std.mem.SplitIterator(u8, .scalar)) !i32 {
     return std.fmt.parseInt(i32, words.next() orelse return error.MissingField, 10);
 }
@@ -89,7 +95,7 @@ const Line = union(enum) {
     //attempt_order: void,
     shed: bool,
     inner_push: bool,
-    //draw_style: void,
+    draw_style: DrawStyle,
     custom_level_music: i32,
     custom_level_palette: i32,
 
@@ -122,7 +128,16 @@ const Line = union(enum) {
             const enabled = try nextBool(&words);
             return .{ .inner_push = enabled };
         } else if (std.mem.eql(u8, first_word, "draw_style")) {
-            return error.DrawStyleNotImplemented;
+            const second_word = words.next() orelse return error.MissingField;
+            if (std.mem.eql(u8, second_word, "grid")) {
+                return .{ .draw_style = .grid };
+            } else if (std.mem.eql(u8, second_word, "tui")) {
+                return .{ .draw_style = .tui };
+            } else if (std.mem.eql(u8, second_word, "oldstyle")) {
+                return .{ .draw_style = .oldstyle };
+            } else {
+                return .garbage; // the game ignores other draw_style values
+            }
         } else if (std.mem.eql(u8, first_word, "custom_level_music")) {
             const music = try nextInt(&words);
             return .{ .custom_level_music = music };
@@ -286,6 +301,13 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
         try writer.print("inner_push 1\n", .{});
     }
 
+    switch (level.draw_style) {
+        .normal => {},
+        .grid => try writer.print("draw_style grid\n", .{}),
+        .text => try writer.print("draw_style tui\n", .{}),
+        .gallery => try writer.print("draw_style oldstyle\n", .{}),
+    }
+
     if (level.palette > -1) {
         try writer.print("custom_level_palette {d}\n", .{level.palette});
     }
@@ -362,6 +384,13 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
             },
             .inner_push => |enabled| {
                 level.inner_push = enabled;
+            },
+            .draw_style => |style| {
+                switch (style) {
+                    .grid => level.draw_style = .grid,
+                    .tui => level.draw_style = .text,
+                    .oldstyle => level.draw_style = .gallery,
+                }
             },
             .custom_level_palette => |palette| {
                 if (palette > pal.MAX_PALETTE) {
@@ -526,7 +555,7 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                     .player_goal = player_goal,
                 });
             },
-            .version, .shed, .inner_push, .custom_level_palette, .custom_level_music, .end_of_header, .garbage => {
+            else => {
                 // ignore
             },
         }
