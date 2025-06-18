@@ -6,9 +6,18 @@ const utils = @import("utils.zig");
 
 const RECURSION_DEPTH = 10;
 
+const CLOSED_BORDER_COLOR: rl.Color = .{ .r = 254, .g = 228, .b = 0, .a = 255 };
+
+const RoomBrightness = enum {
+    normal,
+    clone,
+    infinity,
+};
+
 const Textures = struct {
     eyes: rl.Texture2D,
     possess_eyes: rl.Texture2D,
+    infinity: rl.Texture2D,
 };
 
 var textures: ?Textures = null;
@@ -16,7 +25,8 @@ var textures: ?Textures = null;
 pub fn loadTextures() !void {
     const eyes = try rl.loadTexture("graphics/eyes.png");
     const possess_eyes = try rl.loadTexture("graphics/possess_eyes.png");
-    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes };
+    const infinity = try rl.loadTexture("graphics/infinity.png");
+    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity };
 }
 
 pub fn unloadTextures() void {
@@ -29,14 +39,7 @@ pub fn unloadTextures() void {
     textures = null;
 }
 
-fn drawEyes(rect: rl.Rectangle, color: rl.Color) void {
-    const tex = textures.?.eyes;
-    const src_rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = @floatFromInt(tex.width), .height = @floatFromInt(tex.height) };
-    rl.drawTexturePro(tex, src_rect, rect, rl.math.vector2Zero(), 0, color);
-}
-
-fn drawPossessEyes(rect: rl.Rectangle, color: rl.Color) void {
-    const tex = textures.?.possess_eyes;
+fn drawTextureToRect(tex: rl.Texture2D, rect: rl.Rectangle, color: rl.Color) void {
     const src_rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = @floatFromInt(tex.width), .height = @floatFromInt(tex.height) };
     rl.drawTexturePro(tex, src_rect, rect, rl.math.vector2Zero(), 0, color);
 }
@@ -79,7 +82,7 @@ fn drawFlipEffect(obj_rect: rl.Rectangle, right_to_left: bool) void {
     rl.drawRectangleRec(rect, rl.colorAlpha(.white, 0.5));
 }
 
-fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level: u8, selection_effect: bool, clone: bool, flip: bool) void {
+fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level: u8, selection_effect: bool, brightness: RoomBrightness, flip: bool) void {
     if (recursion_level == 0) return;
 
     if (rect.width < 7 or rect.height < 7) return;
@@ -90,9 +93,16 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
 
         var room_color = utils.getColor(level.palette, room.hue, room.sat, room.val);
         var bg_color = rl.colorBrightness(room_color, -0.7);
-        if (clone) {
-            room_color = rl.colorBrightness(room_color, 0.7);
-            bg_color = rl.colorBrightness(bg_color, 0.3);
+        switch (brightness) {
+            .normal => {},
+            .clone => {
+                room_color = rl.colorBrightness(room_color, 0.7);
+                bg_color = rl.colorBrightness(bg_color, 0.3);
+            },
+            .infinity => {
+                room_color = rl.colorBrightness(room_color, -0.4);
+                bg_color = rl.colorBrightness(bg_color, -0.4);
+            },
         }
 
         rl.drawRectangleRec(rect, bg_color); // bg
@@ -130,11 +140,23 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                     rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(.black, 0.8));
                 },
                 .ref => {
+                    const bright: RoomBrightness = if (obj.is_infinity)
+                        .infinity
+                    else if (obj.exitblock)
+                        .normal
+                    else
+                        .clone;
+
                     const flip_inside = flip != obj.flip; // effectively a XOR, two flips cancel out
                     // recursion!
-                    drawRoom(level, obj.room_id, obj_rect, recursion_level - 1, false, !obj.exitblock, flip_inside);
-                    // black border
-                    rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(.black, 0.8));
+                    drawRoom(level, obj.room_id, obj_rect, recursion_level - 1, false, bright, flip_inside);
+                    // black (or yellow) border
+                    const border_color: rl.Color = if (obj.is_infinity) CLOSED_BORDER_COLOR else .black;
+                    rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(border_color, 0.8));
+                    // infinity symbol
+                    if (obj.is_infinity) {
+                        drawTextureToRect(textures.?.infinity, obj_rect, rl.colorAlpha(.white, 0.95));
+                    }
                     // flip effect
                     if (obj.flip) {
                         drawFlipEffect(obj_rect, flip_inside);
@@ -147,9 +169,9 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
 
             // draw eyes
             if (obj.is_player) {
-                drawEyes(obj_rect, rl.colorAlpha(.black, 0.6));
+                drawTextureToRect(textures.?.eyes, obj_rect, rl.colorAlpha(.black, 0.6));
             } else if (obj.possessable) { // possessable and not player
-                drawPossessEyes(obj_rect, rl.colorAlpha(.black, 0.6));
+                drawTextureToRect(textures.?.possess_eyes, obj_rect, rl.colorAlpha(.black, 0.6));
             }
 
             // draw selection effect
@@ -184,7 +206,7 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                 .floor => {
                     rl.drawRectangleLinesEx(goal_rect, 2, color);
                     if (obj.player_goal) {
-                        drawEyes(goal_rect, color);
+                        drawTextureToRect(textures.?.eyes, goal_rect, color);
                     }
                 },
             }
@@ -196,7 +218,7 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
 }
 
 pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel_rect: rl.Rectangle) void {
-    drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, false, false);
+    drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, .normal, false);
 
     // selection box
     if (draw_sel_box) {

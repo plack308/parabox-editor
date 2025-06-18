@@ -22,6 +22,8 @@ pub const LevelObject = struct {
     // for refs
     room_id: i32 = 0,
     exitblock: bool = false,
+    is_infinity: bool = false,
+    infinity_num: i32 = 1, // single inf = 1
 
     // color for box objects
     hue: f32 = 0,

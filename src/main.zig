@@ -33,6 +33,7 @@ const BuildObjectType = enum {
     player, // places a box object with different defaults
     ref, // ref, exitblock on
     clone, // ref, exitblock off
+    infinity, // ref, is_infinity on
     goal,
     player_goal,
 };
@@ -150,6 +151,9 @@ fn updateRoom(room: *lv.Room) !void {
                         },
                         .clone => {
                             try room.objects.append(.{ .selected = true, .type = .ref, .x = mouse_tile_x, .y = mouse_tile_y, .exitblock = false });
+                        },
+                        .infinity => {
+                            try room.objects.append(.{ .selected = true, .type = .ref, .x = mouse_tile_x, .y = mouse_tile_y, .exitblock = false, .is_infinity = true });
                         },
                     }
                 }
@@ -282,6 +286,17 @@ fn objectPropertiesPanel(obj: *lv.LevelObject, palette_idx: i32) void {
         rect.y += 40;
         rect.width = 30;
         _ = gui.checkBox(rect, "exitblock", &obj.exitblock);
+
+        // is infinity
+        rect.y += 40;
+        _ = gui.checkBox(rect, "is infinity", &obj.is_infinity);
+
+        if (obj.is_infinity) {
+            // infinity num
+            rect.y += 30;
+            rect.width = 150;
+            _ = gui.spinner(rect, "infinity num", &obj.infinity_num, 1, std.math.maxInt(i32), false);
+        }
     }
 
     rect.width = 150;
@@ -438,6 +453,13 @@ fn editorControlsPanel() void {
     _ = gui.toggle(rect, "clone", &clone_active);
     if (clone_active) {
         build_object_type = .clone;
+    }
+
+    rect.y += 30;
+    var infinity_active: bool = build_object_type == .infinity;
+    _ = gui.toggle(rect, "infinity", &infinity_active);
+    if (infinity_active) {
+        build_object_type = .infinity;
     }
 
     // focused id

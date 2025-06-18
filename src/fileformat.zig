@@ -339,7 +339,7 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
                     try writer.print("\tBlock {d} {d} {d} 1 1 {d} {d} {d} 1 1 {d} {d} {d} 0 0 0\n", .{ obj.x, obj.y, box_id, obj.hue, obj.sat, obj.val, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order });
                 },
                 .ref => {
-                    try writer.print("\tRef {d} {d} {d} {d} 0 0 0 0 0 {d} {d} {d} {d} 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), obj.special_effect });
+                    try writer.print("\tRef {d} {d} {d} {d} {d} {d} 0 0 0 {d} {d} {d} {d} 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), obj.special_effect });
                 },
                 .floor => {
                     const type_text = if (obj.player_goal) "PlayerButton" else "Button";
@@ -506,7 +506,6 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                 }
             },
             .ref => |prop| {
-                if (prop.infexit) return error.InfinityNotImplemented;
                 if (prop.infenter) return error.EpsilonNotImplemented;
                 if (prop.floatinspace) return error.FloatInSpaceNotImplemented;
 
@@ -518,6 +517,8 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                     .y = prop.y,
                     .room_id = prop.id,
                     .exitblock = prop.exitblock,
+                    .is_infinity = prop.infexit,
+                    .infinity_num = prop.infexitnum + 1, // in the file, single inf is 0, double is 1, etc
                     .is_player = prop.player,
                     .player_order = prop.playerorder,
                     .possessable = prop.possessable,
