@@ -5,6 +5,9 @@ const ArrayList = std.ArrayList;
 const AutoHashMap = std.AutoHashMap;
 const Allocator = std.mem.Allocator;
 
+pub const DEFAULT_PRIORITY = "push,enter,eat,possess";
+pub const MAX_PRIORITY_LEN = DEFAULT_PRIORITY.len;
+
 pub const LevelObject = struct {
     pub const ObjectType = enum {
         wall,
@@ -125,6 +128,7 @@ pub const Level = struct {
         gallery,
     };
 
+    priority_buf: [MAX_PRIORITY_LEN:0]u8 = DEFAULT_PRIORITY.*,
     extrude: bool = false,
     inner_push: bool = false,
     palette: i32 = -1,

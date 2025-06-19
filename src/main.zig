@@ -44,6 +44,7 @@ var build_object_type: BuildObjectType = .wall; // object type of placed objects
 var focused_id: i32 = 0;
 var select_origin: rl.Vector2 = .{ .x = 0, .y = 0 };
 var file_path_buf: [MAX_PATH_LEN:0]u8 = .{0} ** MAX_PATH_LEN;
+var edited_text_box: enum { path, priority } = .path;
 
 fn getSelectionRect() rl.Rectangle {
     const mouse = rl.getMousePosition();
@@ -532,7 +533,10 @@ fn guiLevelOptions(level: *lv.Level, alloc: Allocator) void {
 
     // file path input
     rect.y += 30;
-    _ = gui.textBox(rect, &file_path_buf, MAX_PATH_LEN, true);
+    if (utils.isRectClicked(rect)) {
+        edited_text_box = .path;
+    }
+    _ = gui.textBox(rect, &file_path_buf, MAX_PATH_LEN, edited_text_box == .path);
 
     const file_path_slice = file_path_buf[0..std.mem.len(@as([*:0]u8, &file_path_buf))];
 
@@ -563,8 +567,29 @@ fn guiLevelOptions(level: *lv.Level, alloc: Allocator) void {
     rect.width = 150;
     _ = gui.label(rect, "Level options");
 
+    // priority
+    rect.x = 10;
+    rect.y += 40;
+    rect.width = 100;
+    _ = gui.label(rect, "priority");
+
+    rect.x += 100;
+    rect.width = 300;
+    if (utils.isRectClicked(rect)) {
+        edited_text_box = .priority;
+    }
+    // i think this function wants the length including the null terminator
+    _ = gui.textBox(rect, &level.priority_buf, level.priority_buf.len + 1, edited_text_box == .priority);
+
+    rect.x += 300;
+    rect.width = 100;
+    if (gui.button(rect, "default")) {
+        level.priority_buf = lv.DEFAULT_PRIORITY.*;
+    }
+
     // extrude
-    rect.y += 30;
+    rect.x = 10;
+    rect.y += 40;
     rect.width = 30;
     _ = gui.checkBox(rect, "extrude", &level.extrude);
 

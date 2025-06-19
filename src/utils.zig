@@ -84,12 +84,15 @@ pub fn getColor(palette_idx: i32, hue: f32, sat: f32, val: f32) rl.Color {
     return rl.colorFromHSV(hsv[0] * 360, hsv[1], hsv[2]);
 }
 
+pub fn isRectClicked(rect: rl.Rectangle) bool {
+    return rl.isMouseButtonPressed(.left) and rl.checkCollisionPointRec(rl.getMousePosition(), rect);
+}
+
 // custom gui element
 pub fn colorButton(rect: rl.Rectangle, color: rl.Color) bool {
     rl.drawRectangleRec(rect, color);
 
-    const mouse_in_button = rl.checkCollisionPointRec(rl.getMousePosition(), rect);
-    return rl.isMouseButtonPressed(.left) and mouse_in_button;
+    return isRectClicked(rect);
 }
 
 pub fn cubicEasing(x: f32) f32 {

@@ -92,7 +92,7 @@ fn nextBool(words: *std.mem.SplitIterator(u8, .scalar)) !bool {
 const Line = union(enum) {
     // header lines
     version: []const u8,
-    //attempt_order: void,
+    attempt_order: []const u8,
     shed: bool,
     inner_push: bool,
     draw_style: DrawStyle,
@@ -120,7 +120,8 @@ const Line = union(enum) {
             const second_word = words.next() orelse return error.MissingField;
             return .{ .version = second_word };
         } else if (std.mem.eql(u8, first_word, "attempt_order")) {
-            return error.PriorityNotImplemented;
+            const second_word = words.next() orelse return error.MissingField;
+            return .{ .attempt_order = second_word };
         } else if (std.mem.eql(u8, first_word, "shed")) {
             const enabled = try nextBool(&words);
             return .{ .shed = enabled };
@@ -293,6 +294,11 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
     // HEADER
     try writer.print("version 4\n", .{});
 
+    const priority_slice = level.priority_buf[0..std.mem.len(@as([*:0]const u8, &level.priority_buf))];
+    if (!std.mem.eql(u8, priority_slice, lv.DEFAULT_PRIORITY)) {
+        try writer.print("attempt_order {s}\n", .{priority_slice});
+    }
+
     if (level.extrude) {
         try writer.print("shed 1\n", .{});
     }
@@ -378,6 +384,13 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
             .version => |word| {
                 // expect version 4
                 if (!std.mem.eql(u8, word, "4")) return error.UnsupportedVersion;
+            },
+            .attempt_order => |word| {
+                if (word.len > level.priority_buf.len) {
+                    return error.PriorityTooLong;
+                }
+                level.priority_buf = .{0} ** level.priority_buf.len;
+                std.mem.copyForwards(u8, &level.priority_buf, word);
             },
             .shed => |enabled| {
                 level.extrude = enabled;
