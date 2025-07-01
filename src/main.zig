@@ -45,6 +45,7 @@ var focused_id: i32 = 0;
 var select_origin: rl.Vector2 = .{ .x = 0, .y = 0 };
 var file_path_buf: [MAX_PATH_LEN:0]u8 = .{0} ** MAX_PATH_LEN;
 var edited_text_box: enum { path, priority } = .path;
+var show_overlaps: bool = true;
 
 fn getSelectionRect() rl.Rectangle {
     const mouse = rl.getMousePosition();
@@ -466,6 +467,10 @@ fn editorControlsPanel() void {
     // focused id
     rect.y += 40;
     _ = gui.spinner(rect, "focused id", &focused_id, std.math.minInt(i32), std.math.maxInt(i32), false);
+
+    rect.y += 40;
+    rect.width = 30;
+    _ = gui.checkBox(rect, "show overlaps", &show_overlaps);
 }
 
 fn drawAndUpdateGui(level: *lv.Level, alloc: Allocator) !void {
@@ -721,7 +726,7 @@ pub fn main() !void {
         switch (scene) {
             .main => {
                 const draw_sel_box = editor_mode == .box_select and rl.isMouseButtonDown(.left);
-                draw.drawMain(&level, focused_id, draw_sel_box, getSelectionRect());
+                try draw.drawMain(&level, focused_id, draw_sel_box, getSelectionRect(), show_overlaps, allocator);
 
                 try drawAndUpdateGui(&level, allocator);
             },

@@ -4,6 +4,9 @@ const rl = @import("raylib");
 const lv = @import("level.zig");
 const utils = @import("utils.zig");
 
+const AutoHashMap = std.AutoHashMap;
+const Allocator = std.mem.Allocator;
+
 const RECURSION_DEPTH = 10;
 
 const CLOSED_BORDER_COLOR: rl.Color = .{ .r = 254, .g = 228, .b = 0, .a = 255 };
@@ -217,8 +220,59 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
     }
 }
 
-pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel_rect: rl.Rectangle) void {
+fn drawOverlaps(room: *const lv.Room, room_rect: rl.Rectangle, alloc: Allocator) !void {
+    var nonfloor_counts = AutoHashMap([2]i32, usize).init(alloc);
+    defer nonfloor_counts.deinit();
+
+    var floor_counts = AutoHashMap([2]i32, usize).init(alloc);
+    defer floor_counts.deinit();
+
+    const tw: f32 = room_rect.width / @as(f32, @floatFromInt(room.width));
+    const th: f32 = room_rect.height / @as(f32, @floatFromInt(room.height));
+
+    for (room.objects.items) |obj| {
+        if (!room.isPosInBounds(obj.x, obj.y)) {
+            continue;
+        }
+
+        const objx: f32 = @floatFromInt(obj.x);
+        const objy: f32 = @floatFromInt(obj.y);
+        const obj_rect: rl.Rectangle = .{
+            .x = room_rect.x + objx * tw,
+            .y = room_rect.y + room_rect.height - objy * th - th,
+            .width = tw,
+            .height = th,
+        };
+
+        switch (obj.type) {
+            .wall, .box, .ref => {
+                const count = nonfloor_counts.get(.{ obj.x, obj.y }) orelse 0;
+                if (count == 1) {
+                    rl.drawRectangleLinesEx(obj_rect, 5, .red);
+                }
+                // increment count for this position
+                try nonfloor_counts.put(.{ obj.x, obj.y }, count + 1);
+            },
+            .floor => {
+                const count = floor_counts.get(.{ obj.x, obj.y }) orelse 0;
+                if (count == 1) {
+                    rl.drawRectangleLinesEx(obj_rect, 5, .red);
+                }
+                try floor_counts.put(.{ obj.x, obj.y }, count + 1);
+            },
+        }
+    }
+}
+
+pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel_rect: rl.Rectangle, draw_overlaps: bool, alloc: Allocator) !void {
     drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, .normal, false);
+
+    if (draw_overlaps) {
+        const maybe_room = level.rooms.getPtr(focused_id);
+        if (maybe_room) |room| {
+            try drawOverlaps(room, utils.getRoomRect(), alloc);
+        }
+    }
 
     // selection box
     if (draw_sel_box) {
