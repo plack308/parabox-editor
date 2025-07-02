@@ -42,18 +42,22 @@ var scene: Scene = .main;
 var editor_mode: EditorMode = .build;
 var build_object_type: BuildObjectType = .wall; // object type of placed objects
 var focused_id: i32 = 0;
-var select_origin: rl.Vector2 = .{ .x = 0, .y = 0 };
+var box_select_origin: ?rl.Vector2 = null; // null means that box selection is not started
 var file_path_buf: [MAX_PATH_LEN:0]u8 = .{0} ** MAX_PATH_LEN;
 var edited_text_box: enum { path, priority } = .path;
 var show_overlaps: bool = true;
 
-fn getSelectionRect() rl.Rectangle {
-    const mouse = rl.getMousePosition();
-    const left = @min(mouse.x, select_origin.x);
-    const right = @max(mouse.x, select_origin.x);
-    const top = @min(mouse.y, select_origin.y);
-    const bottom = @max(mouse.y, select_origin.y);
-    return .{ .x = left, .y = top, .width = right - left, .height = bottom - top };
+fn getSelectionRect() ?rl.Rectangle {
+    if (box_select_origin) |origin| {
+        const mouse = rl.getMousePosition();
+        const left = @min(mouse.x, origin.x);
+        const right = @max(mouse.x, origin.x);
+        const top = @min(mouse.y, origin.y);
+        const bottom = @max(mouse.y, origin.y);
+        return .{ .x = left, .y = top, .width = right - left, .height = bottom - top };
+    } else {
+        return null;
+    }
 }
 
 fn update(level: *lv.Level) !void {
@@ -76,6 +80,11 @@ fn update(level: *lv.Level) !void {
             const maybe_room = level.rooms.getPtr(focused_id);
             if (maybe_room) |room| {
                 try updateRoom(room);
+            }
+
+            // stop box selection if editor mode was changed
+            if (editor_mode != .box_select) {
+                box_select_origin = null;
             }
         },
         .level_options, .controls => {
@@ -183,28 +192,34 @@ fn updateRoom(room: *lv.Room) !void {
             }
         },
         .box_select => {
-            if (rl.isMouseButtonPressed(.left)) {
-                select_origin = rl.getMousePosition();
+            const mouse_in_room = rl.checkCollisionPointRec(rl.getMousePosition(), utils.getRoomRect());
+            if (rl.isMouseButtonPressed(.left) and mouse_in_room) {
+                // start box selection
+                box_select_origin = rl.getMousePosition();
             }
             if (rl.isMouseButtonReleased(.left)) {
-                const rect = getSelectionRect();
-                const left_x = try utils.posToTileX(rect.x, room.width);
-                const right_x = try utils.posToTileX(rect.x + rect.width, room.width);
-                const top_y = try utils.posToTileY(rect.y, room.height);
-                const bottom_y = try utils.posToTileY(rect.y + rect.height, room.height);
+                const maybe_rect = getSelectionRect();
+                if (maybe_rect) |rect| {
+                    const left_x = try utils.posToTileX(rect.x, room.width);
+                    const right_x = try utils.posToTileX(rect.x + rect.width, room.width);
+                    const top_y = try utils.posToTileY(rect.y, room.height);
+                    const bottom_y = try utils.posToTileY(rect.y + rect.height, room.height);
 
-                // hold shift - add to selection
-                if (!rl.isKeyDown(.left_shift)) {
-                    room.deselectAll();
-                }
-                // select objects
-                for (room.objects.items) |*obj| {
-                    if (obj.x >= left_x and obj.x <= right_x and
-                        obj.y >= bottom_y and obj.y <= top_y)
-                    {
-                        obj.selected = true;
+                    // hold shift - add to selection
+                    if (!rl.isKeyDown(.left_shift)) {
+                        room.deselectAll();
+                    }
+                    // select objects
+                    for (room.objects.items) |*obj| {
+                        if (obj.x >= left_x and obj.x <= right_x and
+                            obj.y >= bottom_y and obj.y <= top_y)
+                        {
+                            obj.selected = true;
+                        }
                     }
                 }
+                // stop box selection
+                box_select_origin = null;
             }
         },
         .delete => {
@@ -725,8 +740,7 @@ pub fn main() !void {
 
         switch (scene) {
             .main => {
-                const draw_sel_box = editor_mode == .box_select and rl.isMouseButtonDown(.left);
-                try draw.drawMain(&level, focused_id, draw_sel_box, getSelectionRect(), show_overlaps, allocator);
+                try draw.drawMain(&level, focused_id, getSelectionRect(), show_overlaps, allocator);
 
                 try drawAndUpdateGui(&level, allocator);
             },

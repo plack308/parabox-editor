@@ -264,7 +264,7 @@ fn drawOverlaps(room: *const lv.Room, room_rect: rl.Rectangle, alloc: Allocator)
     }
 }
 
-pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel_rect: rl.Rectangle, draw_overlaps: bool, alloc: Allocator) !void {
+pub fn drawMain(level: *const lv.Level, focused_id: i32, selection_box: ?rl.Rectangle, draw_overlaps: bool, alloc: Allocator) !void {
     drawRoom(level, focused_id, utils.getRoomRect(), RECURSION_DEPTH, true, .normal, false);
 
     if (draw_overlaps) {
@@ -274,8 +274,7 @@ pub fn drawMain(level: *const lv.Level, focused_id: i32, draw_sel_box: bool, sel
         }
     }
 
-    // selection box
-    if (draw_sel_box) {
-        rl.drawRectangleLinesEx(sel_rect, 1, .green);
+    if (selection_box) |rect| {
+        rl.drawRectangleLinesEx(rect, 1, .green);
     }
 }
