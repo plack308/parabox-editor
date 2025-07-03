@@ -60,7 +60,17 @@ fn getSelectionRect() ?rl.Rectangle {
     }
 }
 
-fn update(level: *lv.Level) !void {
+fn copyObjects(room: *lv.Room, clipboard: *ArrayList(lv.LevelObject)) !void {
+    clipboard.clearAndFree();
+
+    for (room.objects.items) |obj| {
+        if (obj.selected) {
+            try clipboard.append(obj);
+        }
+    }
+}
+
+fn update(level: *lv.Level, clipboard: *ArrayList(lv.LevelObject)) !void {
     switch (scene) {
         .main => {
             // esc - switch scene
@@ -79,7 +89,7 @@ fn update(level: *lv.Level) !void {
             // update room
             const maybe_room = level.rooms.getPtr(focused_id);
             if (maybe_room) |room| {
-                try updateRoom(room);
+                try updateRoom(room, clipboard);
             }
 
             // stop box selection if editor mode was changed
@@ -96,7 +106,7 @@ fn update(level: *lv.Level) !void {
     }
 }
 
-fn updateRoom(room: *lv.Room) !void {
+fn updateRoom(room: *lv.Room, clipboard: *ArrayList(lv.LevelObject)) !void {
     const mouse = rl.getMousePosition();
     const mouse_tile_x = try utils.posToTileX(mouse.x, room.width);
     const mouse_tile_y = try utils.posToTileY(mouse.y, room.height);
@@ -118,6 +128,20 @@ fn updateRoom(room: *lv.Room) !void {
     // delete - delete selected
     if (rl.isKeyPressed(.delete)) {
         room.deleteSelected();
+    }
+
+    // c - copy
+    if (rl.isKeyPressed(.c)) {
+        try copyObjects(room, clipboard);
+    }
+
+    // v - paste
+    if (rl.isKeyPressed(.v)) {
+        // deselect
+        room.deselectAll();
+        // paste objects
+        try room.objects.appendSlice(clipboard.items);
+        // all these objects are already selected without any additional code
     }
 
     if (rl.isKeyPressed(.one)) {
@@ -694,6 +718,12 @@ fn guiControls() void {
     _ = gui.label(rect, "DEL - delete objects");
 
     rect.y += 30;
+    _ = gui.label(rect, "C - copy");
+
+    rect.y += 30;
+    _ = gui.label(rect, "V - paste");
+
+    rect.y += 30;
     _ = gui.label(rect, "left/right - change room");
 
     rect.y += 30;
@@ -731,8 +761,11 @@ pub fn main() !void {
     var level = lv.Level.init(allocator);
     defer level.deinit();
 
+    var object_clipboard = ArrayList(lv.LevelObject).init(allocator);
+    defer object_clipboard.deinit();
+
     while (!rl.windowShouldClose()) {
-        try update(&level);
+        try update(&level, &object_clipboard);
 
         rl.beginDrawing();
 
