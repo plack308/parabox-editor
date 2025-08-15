@@ -21,6 +21,8 @@ const Textures = struct {
     eyes: rl.Texture2D,
     possess_eyes: rl.Texture2D,
     infinity: rl.Texture2D,
+    button: rl.Texture2D,
+    player_button: rl.Texture2D,
 };
 
 var textures: ?Textures = null;
@@ -29,7 +31,9 @@ pub fn loadTextures() !void {
     const eyes = try rl.loadTexture("graphics/eyes.png");
     const possess_eyes = try rl.loadTexture("graphics/possess_eyes.png");
     const infinity = try rl.loadTexture("graphics/infinity.png");
-    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity };
+    const button = try rl.loadTexture("graphics/Button.png");
+    const player_button = try rl.loadTexture("graphics/PlayerButton.png");
+    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity, .button = button, .player_button = player_button };
 }
 
 pub fn unloadTextures() void {
@@ -45,15 +49,6 @@ pub fn unloadTextures() void {
 fn drawTextureToRect(tex: rl.Texture2D, rect: rl.Rectangle, color: rl.Color) void {
     const src_rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = @floatFromInt(tex.width), .height = @floatFromInt(tex.height) };
     rl.drawTexturePro(tex, src_rect, rect, rl.math.vector2Zero(), 0, color);
-}
-
-fn getGoalRect(rect: rl.Rectangle) rl.Rectangle {
-    return .{
-        .x = rect.x + 0.1 * rect.width,
-        .y = rect.y + 0.1 * rect.height,
-        .width = 0.8 * rect.width,
-        .height = 0.8 * rect.height,
-    };
 }
 
 fn drawFlipEffect(obj_rect: rl.Rectangle, right_to_left: bool) void {
@@ -200,16 +195,16 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                 .width = tw,
                 .height = th,
             };
-            const goal_rect = getGoalRect(obj_rect);
 
-            const color: rl.Color = if (obj.selected and selection_effect) .green else .gray;
+            const color: rl.Color = if (obj.selected and selection_effect) rl.colorAlpha(.green, 0.6) else rl.colorAlpha(.white, 0.6);
 
             switch (obj.type) {
                 .wall, .box, .ref => {},
                 .floor => {
-                    rl.drawRectangleLinesEx(goal_rect, 2, color);
                     if (obj.player_goal) {
-                        drawTextureToRect(textures.?.eyes, goal_rect, color);
+                        drawTextureToRect(textures.?.player_button, obj_rect, color);
+                    } else {
+                        drawTextureToRect(textures.?.button, obj_rect, color);
                     }
                 },
             }
