@@ -53,14 +53,9 @@ const WallProperties = struct {
 };
 
 const FloorProperties = struct {
-    const FloorType = enum {
-        button,
-        playerbutton,
-    };
-
     x: i32,
     y: i32,
-    ftype: FloorType,
+    ftype: lv.LevelObject.FloorType,
 };
 
 const DrawStyle = enum {
@@ -236,13 +231,7 @@ const Line = union(enum) {
             const y = try nextInt(&words);
 
             const type_word = words.next() orelse return error.MissingField;
-            const ftype: FloorProperties.FloorType = if (std.mem.eql(u8, type_word, "Button"))
-                .button
-            else if (std.mem.eql(u8, type_word, "PlayerButton"))
-                .playerbutton
-            else {
-                return error.InvalidFloorType;
-            };
+            const ftype = try lv.LevelObject.FloorType.fromName(type_word);
 
             return .{ .floor = .{
                 .x = x,
@@ -348,8 +337,7 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
                     try writer.print("\tRef {d} {d} {d} {d} {d} {d} 0 0 0 {d} {d} {d} {d} 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), obj.special_effect });
                 },
                 .floor => {
-                    const type_text = if (obj.player_goal) "PlayerButton" else "Button";
-                    try writer.print("\tFloor {d} {d} {s}\n", .{ obj.x, obj.y, type_text });
+                    try writer.print("\tFloor {d} {d} {s}\n", .{ obj.x, obj.y, obj.floor_type.getName() });
                 },
             }
         }
@@ -558,15 +546,11 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
             .floor => |prop| {
                 const parent_id = parent_stack.getLastOrNull() orelse return error.NoParentBlock;
                 const room = level.rooms.getPtr(parent_id).?;
-                const player_goal = switch (prop.ftype) {
-                    .button => false,
-                    .playerbutton => true,
-                };
                 try room.objects.append(.{
                     .type = .floor,
                     .x = prop.x,
                     .y = prop.y,
-                    .player_goal = player_goal,
+                    .floor_type = prop.ftype,
                 });
             },
             else => {

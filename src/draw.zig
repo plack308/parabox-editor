@@ -23,6 +23,11 @@ const Textures = struct {
     infinity: rl.Texture2D,
     button: rl.Texture2D,
     player_button: rl.Texture2D,
+    fast_travel: rl.Texture2D,
+    info: rl.Texture2D,
+    break_: rl.Texture2D,
+    gallery: rl.Texture2D,
+    smile: rl.Texture2D,
 };
 
 var textures: ?Textures = null;
@@ -33,7 +38,12 @@ pub fn loadTextures() !void {
     const infinity = try rl.loadTexture("graphics/infinity.png");
     const button = try rl.loadTexture("graphics/Button.png");
     const player_button = try rl.loadTexture("graphics/PlayerButton.png");
-    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity, .button = button, .player_button = player_button };
+    const fast_travel = try rl.loadTexture("graphics/FastTravel.png");
+    const info = try rl.loadTexture("graphics/Info.png");
+    const break_ = try rl.loadTexture("graphics/Break.png");
+    const gallery = try rl.loadTexture("graphics/Gallery.png");
+    const smile = try rl.loadTexture("graphics/Smile.png");
+    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity, .button = button, .player_button = player_button, .fast_travel = fast_travel, .info = info, .break_ = break_, .gallery = gallery, .smile = smile };
 }
 
 pub fn unloadTextures() void {
@@ -196,16 +206,28 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                 .height = th,
             };
 
-            const color: rl.Color = if (obj.selected and selection_effect) rl.colorAlpha(.green, 0.6) else rl.colorAlpha(.white, 0.6);
+            const texture: rl.Texture2D = switch (obj.floor_type) {
+                .button => textures.?.button,
+                .player_button => textures.?.player_button,
+                .fast_travel => textures.?.fast_travel,
+                .info, .demo_end => textures.?.info,
+                .break_, .show => textures.?.break_,
+                .gallery => textures.?.gallery,
+                .smile => textures.?.smile,
+            };
+
+            const alpha: f32 = switch (obj.floor_type) {
+                .button, .player_button => 0.6,
+                .fast_travel, .info, .demo_end, .break_, .gallery => 0.3,
+                .show, .smile => 0.5,
+            };
+
+            const color: rl.Color = if (obj.selected and selection_effect) rl.colorAlpha(.green, alpha) else rl.colorAlpha(.white, alpha);
 
             switch (obj.type) {
                 .wall, .box, .ref => {},
                 .floor => {
-                    if (obj.player_goal) {
-                        drawTextureToRect(textures.?.player_button, obj_rect, color);
-                    } else {
-                        drawTextureToRect(textures.?.button, obj_rect, color);
-                    }
+                    drawTextureToRect(texture, obj_rect, color);
                 },
             }
         }

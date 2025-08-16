@@ -16,6 +16,55 @@ pub const LevelObject = struct {
         floor,
     };
 
+    pub const FloorType = enum(i32) {
+        button = 0, // values are important for the dropdown!
+        player_button,
+        fast_travel,
+        info,
+        demo_end,
+        break_, // break is a reserved word...
+        gallery,
+        show,
+        smile,
+
+        pub fn getName(self: FloorType) []const u8 {
+            return switch (self) {
+                .button => "Button",
+                .player_button => "PlayerButton",
+                .fast_travel => "FastTravel",
+                .info => "Info",
+                .demo_end => "DemoEnd",
+                .break_ => "Break",
+                .gallery => "Gallery",
+                .show => "Show",
+                .smile => "Smile",
+            };
+        }
+
+        pub fn fromName(name: []const u8) !FloorType {
+            return if (std.mem.eql(u8, name, "Button"))
+                .button
+            else if (std.mem.eql(u8, name, "PlayerButton"))
+                .player_button
+            else if (std.mem.eql(u8, name, "FastTravel"))
+                .fast_travel
+            else if (std.mem.eql(u8, name, "Info"))
+                .info
+            else if (std.mem.eql(u8, name, "DemoEnd"))
+                .demo_end
+            else if (std.mem.eql(u8, name, "Break"))
+                .break_
+            else if (std.mem.eql(u8, name, "Gallery"))
+                .gallery
+            else if (std.mem.eql(u8, name, "Show"))
+                .show
+            else if (std.mem.eql(u8, name, "Smile"))
+                .smile
+            else
+                error.InvalidFloorType;
+        }
+    };
+
     selected: bool = false,
     type: ObjectType,
 
@@ -38,7 +87,7 @@ pub const LevelObject = struct {
 
     possessable: bool = false,
 
-    player_goal: bool = false, // makes floor objects PlayerButton instead of Button
+    floor_type: FloorType = .button, // for floor objects
 
     // for refs
     flip: bool = false,

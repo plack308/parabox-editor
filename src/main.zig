@@ -46,6 +46,7 @@ var box_select_origin: ?rl.Vector2 = null; // null means that box selection is n
 var file_path_buf: [MAX_PATH_LEN:0]u8 = .{0} ** MAX_PATH_LEN;
 var edited_text_box: enum { path, priority } = .path;
 var show_overlaps: bool = true;
+var floor_type_dropdown_editmode: bool = false;
 
 fn getSelectionRect() ?rl.Rectangle {
     if (box_select_origin) |origin| {
@@ -176,10 +177,10 @@ fn updateRoom(room: *lv.Room, clipboard: *ArrayList(lv.LevelObject)) !void {
                             try room.objects.append(.{ .selected = true, .type = .box, .x = mouse_tile_x, .y = mouse_tile_y, .hue = 0.9, .sat = 1, .val = 0.7, .is_player = true, .possessable = true });
                         },
                         .goal => {
-                            try room.objects.append(.{ .selected = true, .type = .floor, .x = mouse_tile_x, .y = mouse_tile_y, .player_goal = false });
+                            try room.objects.append(.{ .selected = true, .type = .floor, .x = mouse_tile_x, .y = mouse_tile_y, .floor_type = .button });
                         },
                         .player_goal => {
-                            try room.objects.append(.{ .selected = true, .type = .floor, .x = mouse_tile_x, .y = mouse_tile_y, .player_goal = true });
+                            try room.objects.append(.{ .selected = true, .type = .floor, .x = mouse_tile_x, .y = mouse_tile_y, .floor_type = .player_button });
                         },
                         .ref => {
                             try room.objects.append(.{ .selected = true, .type = .ref, .x = mouse_tile_x, .y = mouse_tile_y, .exitblock = true });
@@ -390,10 +391,17 @@ fn objectPropertiesPanel(obj: *lv.LevelObject, palette_idx: i32) void {
     }
 
     if (obj.type == .floor) {
-        // player goal
+        // floor type
+        var active_item: i32 = @intFromEnum(obj.floor_type);
+
         rect.y += 40;
-        rect.width = 30;
-        _ = gui.checkBox(rect, "player goal", &obj.player_goal);
+        rect.width = 150;
+        const ret = gui.dropdownBox(rect, "Button;PlayerButton;FastTravel;Info;DemoEnd;Break;Gallery;Show;Smile", &active_item, floor_type_dropdown_editmode);
+        if (ret != 0) {
+            floor_type_dropdown_editmode = !floor_type_dropdown_editmode;
+        }
+
+        obj.floor_type = @enumFromInt(active_item);
     }
 
     if (obj.type == .ref) {
@@ -589,7 +597,7 @@ fn guiLevelOptions(level: *lv.Level, alloc: Allocator) void {
     rect.width = 70;
     if (gui.button(rect, "save")) {
         fileformat.saveLevel(level, file_path_slice) catch |err| {
-            std.log.err("Saving failed: {any}", .{err});
+            std.log.err("Save failed: {any}", .{err});
         };
     }
 
@@ -601,7 +609,7 @@ fn guiLevelOptions(level: *lv.Level, alloc: Allocator) void {
             level.deinit();
             level.* = new_level;
         } else |err| {
-            std.log.err("Loading failed: {any}", .{err});
+            std.log.err("Load failed: {any}", .{err});
         }
     }
 
