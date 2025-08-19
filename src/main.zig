@@ -410,6 +410,10 @@ fn objectPropertiesPanel(obj: *lv.LevelObject, palette_idx: i32) void {
         rect.width = 30;
         _ = gui.checkBox(rect, "flip", &obj.flip);
 
+        // float in space
+        rect.y += 40;
+        _ = gui.checkBox(rect, "float in space", &obj.float_in_space);
+
         // special effect
         rect.x += 75;
         rect.y += 40;

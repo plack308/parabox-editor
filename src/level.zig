@@ -91,6 +91,7 @@ pub const LevelObject = struct {
 
     // for refs
     flip: bool = false,
+    float_in_space: bool = false,
     special_effect: i32 = 0,
 };
 

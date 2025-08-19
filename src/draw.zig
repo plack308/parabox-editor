@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const RECURSION_DEPTH = 10;
 
 const CLOSED_BORDER_COLOR: rl.Color = .{ .r = 254, .g = 228, .b = 0, .a = 255 };
+const FLOATINSPACE_COLOR: rl.Color = .{ .r = 217, .g = 121, .b = 255, .a = 255 };
 
 const RoomBrightness = enum {
     normal,
@@ -158,9 +159,17 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
                     const flip_inside = flip != obj.flip; // effectively a XOR, two flips cancel out
                     // recursion!
                     drawRoom(level, obj.room_id, obj_rect, recursion_level - 1, false, bright, flip_inside);
-                    // black (or yellow) border
-                    const border_color: rl.Color = if (obj.is_infinity) CLOSED_BORDER_COLOR else .black;
+
+                    // border
+                    const border_color: rl.Color = if (obj.float_in_space)
+                        FLOATINSPACE_COLOR
+                    else if (obj.is_infinity)
+                        CLOSED_BORDER_COLOR
+                    else
+                        .black;
+
                     rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(border_color, 0.8));
+
                     // infinity symbol
                     if (obj.is_infinity) {
                         drawTextureToRect(textures.?.infinity, obj_rect, rl.colorAlpha(.white, 0.95));

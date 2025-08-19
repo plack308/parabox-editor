@@ -334,7 +334,7 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
                     try writer.print("\tBlock {d} {d} {d} 1 1 {d} {d} {d} 1 1 {d} {d} {d} 0 0 0\n", .{ obj.x, obj.y, box_id, obj.hue, obj.sat, obj.val, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order });
                 },
                 .ref => {
-                    try writer.print("\tRef {d} {d} {d} {d} {d} {d} 0 0 0 {d} {d} {d} {d} 0 {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), obj.special_effect });
+                    try writer.print("\tRef {d} {d} {d} {d} {d} {d} 0 0 0 {d} {d} {d} {d} {d} {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), @intFromBool(obj.float_in_space), obj.special_effect });
                 },
                 .floor => {
                     try writer.print("\tFloor {d} {d} {s}\n", .{ obj.x, obj.y, obj.floor_type.getName() });
@@ -508,14 +508,26 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
             },
             .ref => |prop| {
                 if (prop.infenter) return error.EpsilonNotImplemented;
-                if (prop.floatinspace) return error.FloatInSpaceNotImplemented;
 
                 const parent_id = parent_stack.getLastOrNull() orelse return error.NoParentBlock;
                 const room = level.rooms.getPtr(parent_id).?;
+
+                // force floatinspace refs to be placed inbounds
+                // to make them easier to edit
+                // and to prevent them from being discarded when saving
+                var x: i32 = prop.x;
+                var y: i32 = prop.y;
+                if (prop.floatinspace) {
+                    if (x < 0) x = 0;
+                    if (x >= room.width) x = room.width - 1;
+                    if (y < 0) y = 0;
+                    if (y >= room.height) y = room.height - 1;
+                }
+
                 try room.objects.append(.{
                     .type = .ref,
-                    .x = prop.x,
-                    .y = prop.y,
+                    .x = x,
+                    .y = y,
                     .room_id = prop.id,
                     .exitblock = prop.exitblock,
                     .is_infinity = prop.infexit,
@@ -524,6 +536,7 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                     .player_order = prop.playerorder,
                     .possessable = prop.possessable,
                     .flip = prop.fliph,
+                    .float_in_space = prop.floatinspace,
                     .special_effect = prop.specialeffect,
                 });
 
