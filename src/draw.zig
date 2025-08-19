@@ -22,6 +22,7 @@ const Textures = struct {
     eyes: rl.Texture2D,
     possess_eyes: rl.Texture2D,
     infinity: rl.Texture2D,
+    epsilon: rl.Texture2D,
     button: rl.Texture2D,
     player_button: rl.Texture2D,
     fast_travel: rl.Texture2D,
@@ -37,6 +38,7 @@ pub fn loadTextures() !void {
     const eyes = try rl.loadTexture("graphics/eyes.png");
     const possess_eyes = try rl.loadTexture("graphics/possess_eyes.png");
     const infinity = try rl.loadTexture("graphics/infinity.png");
+    const epsilon = try rl.loadTexture("graphics/epsilon.png");
     const button = try rl.loadTexture("graphics/Button.png");
     const player_button = try rl.loadTexture("graphics/PlayerButton.png");
     const fast_travel = try rl.loadTexture("graphics/FastTravel.png");
@@ -44,7 +46,7 @@ pub fn loadTextures() !void {
     const break_ = try rl.loadTexture("graphics/Break.png");
     const gallery = try rl.loadTexture("graphics/Gallery.png");
     const smile = try rl.loadTexture("graphics/Smile.png");
-    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity, .button = button, .player_button = player_button, .fast_travel = fast_travel, .info = info, .break_ = break_, .gallery = gallery, .smile = smile };
+    textures = .{ .eyes = eyes, .possess_eyes = possess_eyes, .infinity = infinity, .epsilon = epsilon, .button = button, .player_button = player_button, .fast_travel = fast_travel, .info = info, .break_ = break_, .gallery = gallery, .smile = smile };
 }
 
 pub fn unloadTextures() void {
@@ -170,8 +172,10 @@ fn drawRoom(level: *const lv.Level, id: i32, rect: rl.Rectangle, recursion_level
 
                     rl.drawRectangleLinesEx(obj_rect, 2, rl.colorAlpha(border_color, 0.8));
 
-                    // infinity symbol
-                    if (obj.is_infinity) {
+                    // infinity/epsilon symbol
+                    if (obj.is_epsilon) {
+                        drawTextureToRect(textures.?.epsilon, obj_rect, rl.colorAlpha(.white, 0.6));
+                    } else if (obj.is_infinity) {
                         drawTextureToRect(textures.?.infinity, obj_rect, rl.colorAlpha(.white, 0.95));
                     }
                     // flip effect

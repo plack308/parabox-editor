@@ -339,6 +339,22 @@ fn objectPropertiesPanel(obj: *lv.LevelObject, palette_idx: i32) void {
             rect.width = 150;
             _ = gui.spinner(rect, "infinity num", &obj.infinity_num, 1, std.math.maxInt(i32), false);
         }
+
+        // is epsilon
+        rect.y += 40;
+        rect.width = 30;
+        _ = gui.checkBox(rect, "is epsilon", &obj.is_epsilon);
+
+        if (obj.is_epsilon) {
+            // epsilon num
+            rect.y += 30;
+            rect.width = 150;
+            _ = gui.spinner(rect, "epsilon num", &obj.epsilon_num, 1, std.math.maxInt(i32), false);
+
+            // epsilon of
+            rect.y += 30;
+            _ = gui.spinner(rect, "epsilon of", &obj.epsilon_of, std.math.minInt(i32), std.math.maxInt(i32), false);
+        }
     }
 
     rect.width = 150;

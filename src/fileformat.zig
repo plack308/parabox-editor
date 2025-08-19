@@ -334,7 +334,7 @@ pub fn saveLevel(level: *const lv.Level, filename: []const u8) !void {
                     try writer.print("\tBlock {d} {d} {d} 1 1 {d} {d} {d} 1 1 {d} {d} {d} 0 0 0\n", .{ obj.x, obj.y, box_id, obj.hue, obj.sat, obj.val, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order });
                 },
                 .ref => {
-                    try writer.print("\tRef {d} {d} {d} {d} {d} {d} 0 0 0 {d} {d} {d} {d} {d} {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), @intFromBool(obj.float_in_space), obj.special_effect });
+                    try writer.print("\tRef {d} {d} {d} {d} {d} {d} {d} {d} {d} {d} {d} {d} {d} {d} {d}\n", .{ obj.x, obj.y, obj.room_id, @intFromBool(obj.exitblock), @intFromBool(obj.is_infinity), obj.infinity_num - 1, @intFromBool(obj.is_epsilon), obj.epsilon_num - 1, obj.epsilon_of, @intFromBool(obj.is_player), @intFromBool(obj.possessable), obj.player_order, @intFromBool(obj.flip), @intFromBool(obj.float_in_space), obj.special_effect });
                 },
                 .floor => {
                     try writer.print("\tFloor {d} {d} {s}\n", .{ obj.x, obj.y, obj.floor_type.getName() });
@@ -439,9 +439,6 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
 
         switch (i_line.line) {
             .block => |prop| {
-                if (prop.fliph) return error.FlipNotImplemented;
-                if (prop.floatinspace) return error.FloatInSpaceNotImplemented;
-
                 if (prop.fillwithwalls) {
                     // if there is a parent block
                     if (parent_stack.getLastOrNull()) |parent_id| {
@@ -464,17 +461,29 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                 } else { // no fillwithwalls
                     // if there is a parent block
                     if (parent_stack.getLastOrNull()) |parent_id| {
-                        // add a reference to this block inside the parent block
                         const room = level.rooms.getPtr(parent_id).?;
+
+                        // same fix as below
+                        var x: i32 = prop.x;
+                        var y: i32 = prop.y;
+                        if (prop.floatinspace) {
+                            if (x < 0) x = 0;
+                            if (x >= room.width) x = room.width - 1;
+                            if (y < 0) y = 0;
+                            if (y >= room.height) y = room.height - 1;
+                        }
+
+                        // add a reference to this block inside the parent block
                         try room.objects.append(.{
                             .type = .ref,
-                            .x = prop.x,
-                            .y = prop.y,
+                            .x = x,
+                            .y = y,
                             .room_id = prop.id,
                             .is_player = prop.player,
                             .player_order = prop.playerorder,
                             .possessable = prop.possessable,
                             .flip = prop.fliph,
+                            .float_in_space = prop.floatinspace,
                             .special_effect = prop.specialeffect,
                         });
                         // we don't know if this is an exitblock until we reach the end of the file
@@ -507,8 +516,6 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                 }
             },
             .ref => |prop| {
-                if (prop.infenter) return error.EpsilonNotImplemented;
-
                 const parent_id = parent_stack.getLastOrNull() orelse return error.NoParentBlock;
                 const room = level.rooms.getPtr(parent_id).?;
 
@@ -532,6 +539,9 @@ pub fn loadLevel(filename: []const u8, alloc: Allocator) !lv.Level {
                     .exitblock = prop.exitblock,
                     .is_infinity = prop.infexit,
                     .infinity_num = prop.infexitnum + 1, // in the file, single inf is 0, double is 1, etc
+                    .is_epsilon = prop.infenter,
+                    .epsilon_num = prop.infenternum + 1, // same as infinity
+                    .epsilon_of = prop.infenterid,
                     .is_player = prop.player,
                     .player_order = prop.playerorder,
                     .possessable = prop.possessable,

@@ -76,6 +76,9 @@ pub const LevelObject = struct {
     exitblock: bool = false,
     is_infinity: bool = false,
     infinity_num: i32 = 1, // single inf = 1
+    is_epsilon: bool = false,
+    epsilon_num: i32 = 1,
+    epsilon_of: i32 = 0,
 
     // color for box objects
     hue: f32 = 0,
