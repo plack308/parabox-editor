@@ -13,11 +13,13 @@ const AutoHashMap = std.AutoHashMap;
 const Allocator = std.mem.Allocator;
 
 const MAX_PATH_LEN = 250;
+const MAX_FLOAT_INPUT_LEN = 20;
 
 const Scene = enum {
     main,
     level_options,
     controls,
+    edit_float,
 };
 
 const EditorMode = enum {
@@ -47,6 +49,8 @@ var file_path_buf: [MAX_PATH_LEN:0]u8 = .{0} ** MAX_PATH_LEN;
 var edited_text_box: enum { path, priority } = .path;
 var show_overlaps: bool = true;
 var floor_type_dropdown_editmode: bool = false;
+var float_input_buf: [MAX_FLOAT_INPUT_LEN:0]u8 = .{0} ** MAX_FLOAT_INPUT_LEN;
+var edited_float_ptr: ?*f32 = null;
 
 fn getSelectionRect() ?rl.Rectangle {
     if (box_select_origin) |origin| {
@@ -69,6 +73,12 @@ fn copyObjects(room: *lv.Room, clipboard: *ArrayList(lv.LevelObject)) !void {
             try clipboard.append(obj);
         }
     }
+}
+
+fn startEditingFloat(ptr: *f32) void {
+    edited_float_ptr = ptr;
+    scene = .edit_float;
+    @memset(&float_input_buf, 0); // clear text box
 }
 
 fn update(level: *lv.Level, clipboard: *ArrayList(lv.LevelObject)) !void {
@@ -98,7 +108,7 @@ fn update(level: *lv.Level, clipboard: *ArrayList(lv.LevelObject)) !void {
                 box_select_origin = null;
             }
         },
-        .level_options, .controls => {
+        .level_options, .controls, .edit_float => {
             // esc - switch scene
             if (rl.isKeyPressed(.escape)) {
                 scene = .main;
@@ -274,10 +284,21 @@ fn roomPropertiesPanel(room: *lv.Room, palette_idx: i32) void {
     // room color
     rect.y += 40;
     _ = gui.slider(rect, "hue", "", &room.hue, 0, 1);
+    if (gui.button(.{ .x = rect.x + 150, .y = rect.y, .width = 30, .height = 30 }, "+")) {
+        startEditingFloat(&room.hue);
+    }
+
     rect.y += 30;
     _ = gui.slider(rect, "sat", "", &room.sat, 0, 1);
+    if (gui.button(.{ .x = rect.x + 150, .y = rect.y, .width = 30, .height = 30 }, "+")) {
+        startEditingFloat(&room.sat);
+    }
+
     rect.y += 30;
     _ = gui.slider(rect, "val", "", &room.val, 0, 1);
+    if (gui.button(.{ .x = rect.x + 150, .y = rect.y, .width = 30, .height = 30 }, "+")) {
+        startEditingFloat(&room.val);
+    }
 
     // palette color buttons
     rect.y += 30;
@@ -296,13 +317,18 @@ fn roomPropertiesPanel(room: *lv.Room, palette_idx: i32) void {
     }
 
     // zoom factor
-    rect.x = utils.guiSecondColumnX();
+    rect.x = utils.guiSecondColumnX() - 50;
     rect.y += 40;
     rect.width = 200;
     _ = gui.label(rect, rl.textFormat("zoom factor: %.2f", .{room.zoom_factor}));
+    rect.x += 200;
+    rect.width = 30;
+    if (gui.button(rect, "+")) {
+        startEditingFloat(&room.zoom_factor);
+    }
 
     // special effect
-    rect.x += 75;
+    rect.x = utils.guiSecondColumnX() + 75;
     rect.y += 40;
     rect.width = 85;
     _ = gui.spinner(rect, "special effect", &room.special_effect, 0, std.math.maxInt(i32), false);
@@ -767,6 +793,36 @@ fn guiControls() void {
     _ = gui.label(rect, "ESC - level options / back");
 }
 
+fn guiEditFloat() void {
+    // back button
+    var rect: rl.Rectangle = .{ .x = 10, .y = 10, .width = 30, .height = 30 };
+    if (gui.button(rect, gui.iconText(@intFromEnum(gui.IconName.arrow_left_fill), ""))) {
+        scene = .main;
+    }
+
+    // label
+    rect = .{ .x = 10, .y = 50, .width = 500, .height = 30 };
+    _ = gui.label(rect, rl.textFormat("current value: %.2f", .{edited_float_ptr.?.*}));
+
+    // float input
+    rect.y += 30;
+    _ = gui.textBox(rect, &float_input_buf, MAX_FLOAT_INPUT_LEN, true);
+
+    const float_input_slice = float_input_buf[0..std.mem.len(@as([*:0]u8, &float_input_buf))];
+
+    // set value button
+    rect.y += 30;
+    rect.width = 100;
+    if (gui.button(rect, "set value")) {
+        if (std.fmt.parseFloat(f32, float_input_slice)) |val| {
+            edited_float_ptr.?.* = val;
+            scene = .main;
+        } else |_| {
+            std.log.err("Failed to parse float", .{});
+        }
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -810,6 +866,9 @@ pub fn main() !void {
             },
             .controls => {
                 guiControls();
+            },
+            .edit_float => {
+                guiEditFloat();
             },
         }
 
